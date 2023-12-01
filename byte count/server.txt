@@ -1,0 +1,65 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <unistd.h>
+
+#define MAX 100
+
+int main() {
+    int sockfd, connfd, len;
+    struct sockaddr_in servaddr, cli;
+    char buffer[MAX + 4]; // Extra 4 bytes for message length
+
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd == -1) {
+        perror("Socket creation failed");
+        exit(EXIT_FAILURE);
+    }
+
+    bzero(&servaddr, sizeof(servaddr));
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    servaddr.sin_port = htons(8080);
+
+    if ((bind(sockfd, (struct sockaddr*)&servaddr, sizeof(servaddr))) != 0) {
+        perror("Socket bind failed");
+        exit(EXIT_FAILURE);
+    }
+
+    if ((listen(sockfd, 5)) != 0) {
+        perror("Listen failed");
+        exit(EXIT_FAILURE);
+    }
+
+    len = sizeof(cli);
+    connfd = accept(sockfd, (struct sockaddr*)&cli, &len);
+    if (connfd < 0) {
+        perror("Server accept failed");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Waiting for a client to connect...\n");
+    printf("Client connected.\n");
+
+    while (1) {
+        read(connfd, buffer, sizeof(buffer));
+        if (strlen(buffer) == 0) {
+            printf("Client disconnected.\n");
+            break;
+        }
+
+        int length;
+        sscanf(buffer, "%04d", &length); // Extract the length of the message
+        printf("Message Received...Successfully!!!\n");
+        printf("The Message Length is : %d\n", length);
+
+        printf("The Message is : %s\n", buffer + 4); // Skip the first 4 bytes containing the length
+        printf("Thanks for the Feedback Client!!\n\n");
+    }
+
+    close(connfd);
+    close(sockfd);
+    return 0;
+}

@@ -1,0 +1,84 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <unistd.h>
+
+#define MAX 100
+
+void bitDestuffing(char* source, char* dest) {
+    int count = 0;
+    strcpy(dest, ""); // Clear the destination string
+
+    for (int i = 0; source[i] != '\0'; i++) {
+        dest[strlen(dest)] = source[i];
+        if (source[i] == '1') {
+            count++;
+            if (count == 5 && source[i + 1] == '0') {
+                i++;
+                count = 0;
+            }
+        } else {
+            count = 0;
+        }
+    }
+    dest[strlen(dest)] = '\0';
+}
+
+int main() {
+    int sockfd, connfd, len;
+    struct sockaddr_in servaddr, cli;
+
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd == -1) {
+        perror("Socket creation failed");
+        exit(EXIT_FAILURE);
+    }
+
+    bzero(&servaddr, sizeof(servaddr));
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    servaddr.sin_port = htons(8080);
+
+    if ((bind(sockfd, (struct sockaddr*)&servaddr, sizeof(servaddr))) != 0) {
+        perror("Socket bind failed");
+        exit(EXIT_FAILURE);
+    }
+
+    if ((listen(sockfd, 5)) != 0) {
+        perror("Listen failed");
+        exit(EXIT_FAILURE);
+    }
+
+    len = sizeof(cli);
+    connfd = accept(sockfd, (struct sockaddr*)&cli, &len);
+    if (connfd < 0) {
+        perror("Server accept failed");
+        exit(EXIT_FAILURE);
+    }
+
+    char buffer[MAX], destuffed[MAX];
+    printf("Waiting for a client to connect...\n");
+    printf("Client connected.\n");
+
+    while (1) {
+        read(connfd, buffer, sizeof(buffer));
+        if (strlen(buffer) == 0) {
+            printf("Client disconnected.\n");
+            break;
+        }
+
+        printf("Message Received...Successfully!!!\n");
+        printf("The Stuffed Message is : %s\n", buffer);
+
+        bitDestuffing(buffer, destuffed);
+        printf("The Destuffed Message is : %s\n", destuffed);
+
+        memset(buffer, 0, sizeof(buffer));
+    }
+
+    close(connfd);
+    close(sockfd);
+    return 0;
+}

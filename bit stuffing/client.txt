@@ -1,0 +1,74 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+
+#define MAX 100
+
+void bitStuffing(char* source, char* dest) {
+    int count = 0;
+    strcpy(dest, ""); // Clear the destination string
+
+    for (int i = 0; source[i] != '\0'; i++) {
+        dest[strlen(dest)] = source[i];
+        if (source[i] == '1') {
+            count++;
+            if (count == 5) {
+                dest[strlen(dest)] = '0';
+                count = 0;
+            }
+        } else {
+            count = 0;
+        }
+    }
+    dest[strlen(dest)] = '\0';
+}
+
+int main() {
+    int sockfd;
+    struct sockaddr_in servaddr;
+    char buffer[MAX], stuffed[MAX];
+
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd == -1) {
+        perror("Socket creation failed");
+        exit(EXIT_FAILURE);
+    }
+
+    bzero(&servaddr, sizeof(servaddr));
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    servaddr.sin_port = htons(8080);
+
+    if (connect(sockfd, (struct sockaddr*)&servaddr, sizeof(servaddr)) != 0) {
+        perror("Connection failed");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Connected to server.\n");
+
+    while (1) {
+        printf("Enter the Message to be Sent (or 'bye' to exit): ");
+        fgets(buffer, MAX, stdin);
+        buffer[strcspn(buffer, "\n")] = '\0'; // Remove newline
+
+        if (strcmp(buffer, "bye") == 0) {
+            write(sockfd, "", 1);
+            break;
+        }
+
+        bitStuffing(buffer, stuffed);
+
+        printf("The data being sent (with byte stuffed) is: %s\n", stuffed);
+        printf("Sending Message...\n");
+        write(sockfd, stuffed, strlen(stuffed));
+
+        printf("Thanks for the Feedback Server!!\n\n");
+    }
+
+    close(sockfd);
+    return 0;
+}
